@@ -4,6 +4,8 @@
 #include <string.h>
 #include "html.h"
 
+#define CASE_SPACE case ' ': case '\r': case '\n': case '\t'
+
 /*keep sorted, binary search*/
 const char const *html_tag[HTML_TAGS] = {
 	[HTML_TAG_NONE] = "",
@@ -162,6 +164,69 @@ static void *peek(struct Stack **stack) {
 	return (*stack)->item;
 }
 
+static int stringcompare_tag(const char *s1, const char *s2, size_t length) {
+	int diff, i;
+	for(i = 0; ; i++) {
+		if(i >= length) {
+			if(!s2[i])
+				return 0;
+			return -1;
+		}
+		diff = tolower(s1[i]) - tolower(s2[i]);
+		if(diff)
+			return diff;
+		if(!s1[i]) {
+			if(!s2[i])
+				return 0;
+			else
+				return -1;
+		}
+		if(!s2[i]) {
+			if(!s1[i])
+				return 0;
+			else
+				return 1;
+		}
+	}
+}
+
+int html_is_tag_selfclose(HtmlTag tag) {
+	switch(tag) {
+		case HTML_TAG_BASE:
+		case HTML_TAG_BASEFONT:
+		case HTML_TAG_FRAME:
+		case HTML_TAG_LINK:
+		case HTML_TAG_META:
+		case HTML_TAG_AREA:
+		case HTML_TAG_BR:
+		case HTML_TAG_COL:
+		case HTML_TAG_HR:
+		case HTML_TAG_IMG:
+		case HTML_TAG_INPUT:
+		case HTML_TAG_PARAM:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+HtmlTag html_lookup_length_tag(const char *string, size_t length) {
+	int i, imin = 0, imax = HTML_TAGS, res;
+	
+	while(imax >= imin) {
+		i = (imax - imin)/2 + imin;
+		res = stringcompare_tag(string, html_tag[i], length);
+		if(res < 0)
+			imax = i - 1;
+		else if(res > 0)
+			imin = i + 1;
+		else
+			return i;
+	}
+	
+	return 0;
+}
+
 HtmlTag html_lookup_tag(const char *string) {
 	int i, imin = 0, imax = HTML_TAGS, res;
 	
@@ -193,10 +258,12 @@ HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *chil
 }
 
 HtmlDocument *html_parse_document(const char *string) {
+	//TODO: support entities
+	//TODO: make sure we give comments proper handling, since they can contain >
+	
 	//int length;
-	void *arne;
 	char c;
-	void *entity_p, *elem_p;
+	const char *token;
 	HtmlTag tag;
 	HtmlDocument *document;
 	HtmlElement *elem = NULL, *elem_tmp;
@@ -206,8 +273,14 @@ HtmlDocument *html_parse_document(const char *string) {
 	enum State {
 		STATE_CHILD,
 		STATE_OPEN,
+		STATE_BEGIN,
+		STATE_END,
 		STATE_ATTRIB,
+		STATE_ATTRIB_KEY,
+		STATE_ATTRIB_VALUE,
 		STATE_CLOSE,
+		STATE_SELFCLOSE,
+		STATE_END_CLOSE,
 		STATE_ENTITY,
 		
 		STATES,
@@ -223,6 +296,193 @@ HtmlDocument *html_parse_document(const char *string) {
 	push(&stack, document->root_element);
 	
 	while((c = *string++)) {
+		reswitch:
+		switch(state) {
+			case STATE_CHILD:
+				switch(c) {
+					case '<':
+						//add containing text
+						state = STATE_OPEN;
+						tag = 0;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_OPEN:
+				switch(c) {
+					CASE_SPACE:
+						continue;
+					case '!':
+					case '?':
+						/*Comments, doctypes, xml-stuff and other crap we don't care about*/
+						state = STATE_END_CLOSE;
+						continue;
+					case '/':
+						token = string;
+						state = STATE_END;
+						continue;
+					default:
+						token = string - 1;
+						state = STATE_BEGIN;
+						continue;
+				}
+			case STATE_BEGIN:
+				switch(c) {
+					CASE_SPACE:
+						tag = html_lookup_length_tag(token, (string - 1) - token);
+						state = STATE_ATTRIB;
+						continue;
+					case '>':
+						tag = html_lookup_length_tag(token, (string - 1) - token);
+						state = STATE_CLOSE;
+						goto reswitch;
+					case '/':
+						tag = html_lookup_length_tag(token, (string - 1) - token);
+						state = STATE_SELFCLOSE;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_ATTRIB:
+				switch(c) {
+					CASE_SPACE:
+						continue;
+					case '/':
+						state = STATE_SELFCLOSE;
+						continue;
+					case '>':
+						state = STATE_CLOSE;
+						goto reswitch;
+					default:
+						state = STATE_ATTRIB_KEY;
+						continue;
+				}
+			case STATE_ATTRIB_KEY:
+				switch(c) {
+					CASE_SPACE:
+						//key=key add attrib
+						state = STATE_ATTRIB;
+						continue;
+					case '/':
+						//add attrib
+						state = STATE_SELFCLOSE;
+						continue;
+					case '=':
+						state = STATE_ATTRIB_VALUE;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_ATTRIB_VALUE:
+				switch(c) {
+					CASE_SPACE:
+						//add attrib
+						state = STATE_ATTRIB;
+						continue;
+					case '/':
+						//add attrib
+						state = STATE_SELFCLOSE;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_CLOSE:
+				switch(c) {
+					case '>':
+						//add to stack
+						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
+							goto error;
+						if(elem) {
+							elem->sibbling = elem_tmp;
+							elem = elem_tmp;
+						} else {
+							elem = peek(&stack);
+							elem->child = elem_tmp;
+							elem = elem_tmp;
+						}
+						
+						push(&stack, elem);
+						elem = NULL;
+						
+						state = STATE_CHILD;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_SELFCLOSE:
+				switch(c) {
+					case '>':
+						//add to stack
+						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
+							goto error;
+						if(elem) {
+							elem->sibbling = elem_tmp;
+							elem = elem_tmp;
+						} else {
+							elem = peek(&stack);
+							elem->child = elem_tmp;
+							elem = elem_tmp;
+						}
+						
+						state = STATE_CHILD;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_END:
+				switch(c) {
+					CASE_SPACE:
+						//find tag to close
+						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
+							tag = elem->tag;
+						
+						do {
+							/*check for null, broken pages*/
+							elem_tmp = pop(&stack);
+						} while(elem_tmp->tag != tag);
+						
+						elem = elem_tmp;
+						
+						state = STATE_END_CLOSE;
+						continue;
+					case '>':
+						//find tag to close
+						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
+							tag = elem->tag;
+						
+						do {
+							/*check for null, broken pages*/
+							elem_tmp = pop(&stack);
+						} while(elem_tmp->tag != tag);
+						
+						elem = elem_tmp;
+						
+						state = STATE_CHILD;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_END_CLOSE:
+				switch(c) {
+					case '>':
+						state = STATE_CHILD;
+						continue;
+					default:
+						continue;
+				}
+			case STATE_ENTITY:
+			case STATES:
+				break;
+		}
+		
+		
+		
+		
+		
+		
+		
+		#if 0
+		
 		switch(state) {
 			case STATE_CHILD:
 				switch(c) {
@@ -314,6 +574,7 @@ HtmlDocument *html_parse_document(const char *string) {
 			default:
 				break;
 		}
+		#endif
 	}
 	
 	while(pop(&stack));
