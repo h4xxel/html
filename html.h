@@ -1,6 +1,7 @@
 #ifndef __HTML_H_
 #define __HTML_H_
 
+#include "stack.h"
 
 /*keep sorted, binary search*/
 typedef enum HtmlTag HtmlTag;
@@ -147,6 +148,12 @@ struct HtmlElement {
 typedef struct HtmlDocument HtmlDocument;
 struct HtmlDocument {
 	HtmlElement *root_element;
+};
+
+typedef struct HtmlParseState HtmlParseState;
+struct HtmlParseState {
+	HtmlDocument *document;
+	Stack *stack;
 };
 
 extern const char const *html_tag[HTML_TAGS];

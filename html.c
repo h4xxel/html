@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "stack.h"
 #include "html.h"
 
 #define CASE_SPACE case ' ': case '\r': case '\n': case '\t'
@@ -121,60 +122,6 @@ const char const *html_tag[HTML_TAGS] = {
 	[HTML_TAG_VAR] = "var",
 };
 
-struct Stack {
-	void *item;
-	struct Stack *next;
-};
-
-static void push(struct Stack **stack, void *item) {
-	struct Stack *n;
-	
-	if(!stack)
-		return;
-	if(!(n = malloc(sizeof(struct Stack))))
-		return;
-	
-	n->item = item;
-	n->next = *stack;
-	*stack = n;
-}
-
-static void *pop(struct Stack **stack) {
-	struct Stack *p;
-	void *item;
-	
-	if(!stack)
-		return NULL;
-	if(!(p = *stack))
-		return NULL;
-	
-	*stack = p->next;
-	item = p->item;
-	free(p);
-	
-	return item;
-}
-
-static void *peek(struct Stack **stack) {
-	if(!stack)
-		return NULL;
-	if(!*stack)
-		return NULL;
-	
-	return (*stack)->item;
-}
-
-static int stackfind(struct Stack **stack, int (func)(void *, void *), void *data) {
-	struct Stack *s;
-	if(!stack)
-		return 0;
-	for(s = *stack; s; s = s->next) {
-		if(func(s->item, data))
-			return 1;
-	}
-	return 0;
-}
-
 static int findtag(void *elem, void *tag) {
 	if(((HtmlElement *) elem)->tag == *((int *) tag))
 		return 1;
@@ -286,7 +233,8 @@ HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *chil
 }
 
 HtmlDocument *html_parse_document(const char *string) {
-	//TODO: support text
+	//TODO: continuations
+	//TODO: support text content
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
@@ -299,7 +247,7 @@ HtmlDocument *html_parse_document(const char *string) {
 	HtmlDocument *document;
 	HtmlElement *elem = NULL, *elem_tmp;
 	/*should we keep last sibling on the stack? might be sensible*/
-	struct Stack *stack = NULL;
+	Stack *stack = NULL;
 	
 	enum State {
 		STATE_CHILD,
@@ -332,7 +280,7 @@ HtmlDocument *html_parse_document(const char *string) {
 		return NULL;
 	if(!(document->root_element = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL)))
 		goto error;
-	push(&stack, document->root_element);
+	stack_push(&stack, document->root_element);
 	
 	while((c = *string++)) {
 		reswitch:
@@ -503,13 +451,13 @@ HtmlDocument *html_parse_document(const char *string) {
 							elem->sibbling = elem_tmp;
 							elem = elem_tmp;
 						} else {
-							elem = peek(&stack);
+							elem = stack_peek(&stack);
 							elem->child = elem_tmp;
 							elem = elem_tmp;
 						}
 						
 						if(!html_tag_is_selfclose(tag)) {
-							push(&stack, elem);
+							stack_push(&stack, elem);
 							elem = NULL;
 						}
 						tag = 0;
@@ -533,7 +481,7 @@ HtmlDocument *html_parse_document(const char *string) {
 							elem->sibbling = elem_tmp;
 							elem = elem_tmp;
 						} else {
-							elem = peek(&stack);
+							elem = stack_peek(&stack);
 							elem->child = elem_tmp;
 							elem = elem_tmp;
 						}
@@ -560,14 +508,14 @@ HtmlDocument *html_parse_document(const char *string) {
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
-						if(!stackfind(&stack, findtag, &tag)) {
+						if(!stack_find(&stack, findtag, &tag)) {
 							state = STATE_CHILD;
 							continue;
 						}
 						
 						do {
 							/*check for null, broken pages*/
-							elem_tmp = pop(&stack);
+							elem_tmp = stack_pop(&stack);
 						} while(elem_tmp->tag != tag);
 						
 						elem = elem_tmp;
@@ -589,13 +537,13 @@ HtmlDocument *html_parse_document(const char *string) {
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
-						if(!stackfind(&stack, findtag, &tag)) {
+						if(!stack_find(&stack, findtag, &tag)) {
 							state = STATE_CHILD;
 							continue;
 						}
 						do {
 							/*check for null, broken pages*/
-							elem_tmp = pop(&stack);
+							elem_tmp = stack_pop(&stack);
 						} while(elem_tmp->tag != tag);
 						
 						elem = elem_tmp;
@@ -620,7 +568,7 @@ HtmlDocument *html_parse_document(const char *string) {
 		}
 	}
 	
-	while(pop(&stack));
+	while(stack_pop(&stack));
 	
 	return document;
 	

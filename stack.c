@@ -1,0 +1,51 @@
+#include <stdlib.h>
+#include "stack.h"
+
+void stack_push(Stack **stack, void *item) {
+	struct Stack *n;
+	
+	if(!stack)
+		return;
+	if(!(n = malloc(sizeof(Stack))))
+		return;
+	
+	n->item = item;
+	n->next = *stack;
+	*stack = n;
+}
+
+void *stack_pop(Stack **stack) {
+	struct Stack *p;
+	void *item;
+	
+	if(!stack)
+		return NULL;
+	if(!(p = *stack))
+		return NULL;
+	
+	*stack = p->next;
+	item = p->item;
+	free(p);
+	
+	return item;
+}
+
+void *stack_peek(Stack **stack) {
+	if(!stack)
+		return NULL;
+	if(!*stack)
+		return NULL;
+	
+	return (*stack)->item;
+}
+
+int stack_find(struct Stack **stack, int (func)(void *, void *), void *data) {
+	struct Stack *s;
+	if(!stack)
+		return 0;
+	for(s = *stack; s; s = s->next) {
+		if(func(s->item, data))
+			return 1;
+	}
+	return 0;
+}
