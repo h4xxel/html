@@ -164,6 +164,23 @@ static void *peek(struct Stack **stack) {
 	return (*stack)->item;
 }
 
+static int stackfind(struct Stack **stack, int (func)(void *, void *), void *data) {
+	struct Stack *s;
+	if(!stack)
+		return 0;
+	for(s = *stack; s; s = s->next) {
+		if(func(s->item, data))
+			return 1;
+	}
+	return 0;
+}
+
+static int findtag(void *elem, void *tag) {
+	if(((HtmlElement *) elem)->tag == *((int *) tag))
+		return 1;
+	return 0;
+}
+
 static int stringcompare_tag(const char *s1, const char *s2, size_t length) {
 	int diff, i;
 	for(i = 0; ; i++) {
@@ -505,6 +522,10 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_SELFCLOSE:
 				switch(c) {
 					case '>':
+						if(html_tag_is_script(tag)) {
+							state = STATE_CHILD;
+							continue;
+						}
 						//add to stack
 						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
 							goto error;
@@ -539,6 +560,11 @@ HtmlDocument *html_parse_document(const char *string) {
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
+						if(!stackfind(&stack, findtag, &tag)) {
+							state = STATE_CHILD;
+							continue;
+						}
+						
 						do {
 							/*check for null, broken pages*/
 							elem_tmp = pop(&stack);
@@ -563,6 +589,10 @@ HtmlDocument *html_parse_document(const char *string) {
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
+						if(!stackfind(&stack, findtag, &tag)) {
+							state = STATE_CHILD;
+							continue;
+						}
 						do {
 							/*check for null, broken pages*/
 							elem_tmp = pop(&stack);
