@@ -273,6 +273,7 @@ HtmlDocument *html_parse_document(const char *string) {
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
+	//TODO: handle unknown html elements
 	
 	//int length;
 	char c;
@@ -330,7 +331,7 @@ HtmlDocument *html_parse_document(const char *string) {
 						continue;
 				}
 			case STATE_OPEN:
-				if(tag == HTML_TAG_SCRIPT) {
+				if(html_tag_is_script(tag)) {
 					/*I hate script tags*/
 					if(c != '/') {
 						state = STATE_CHILD;
@@ -474,7 +475,7 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_CLOSE:
 				switch(c) {
 					case '>':
-						if(tag == HTML_TAG_SCRIPT) {
+						if(html_tag_is_script(tag)) {
 							state = STATE_CHILD;
 							continue;
 						}
@@ -525,10 +526,10 @@ HtmlDocument *html_parse_document(const char *string) {
 				switch(c) {
 					CASE_SPACE:
 						//find tag to close
-						if(tag == HTML_TAG_SCRIPT) {
-							if((string - 1) - token > strlen(html_tag[HTML_TAG_SCRIPT]))
+						if(html_tag_is_script(tag)) {
+							if((string - 1) - token > strlen(html_tag[tag]))
 								state = STATE_CHILD;
-							else if(html_lookup_length_tag(token, (string - 1) - token) == HTML_TAG_SCRIPT) {
+							else if(html_lookup_length_tag(token, (string - 1) - token) == tag) {
 								tag = 0;
 								state = STATE_END_CLOSE;
 							} else
@@ -549,10 +550,10 @@ HtmlDocument *html_parse_document(const char *string) {
 						continue;
 					case '>':
 						//find tag to close
-						if(tag == HTML_TAG_SCRIPT) {
-							if((string - 1) - token > strlen(html_tag[HTML_TAG_SCRIPT]))
+						if(html_tag_is_script(tag)) {
+							if((string - 1) - token > strlen(html_tag[tag]))
 								state = STATE_CHILD;
-							else if(html_lookup_length_tag(token, (string - 1) - token) == HTML_TAG_SCRIPT) {
+							else if(html_lookup_length_tag(token, (string - 1) - token) == tag) {
 								tag = 0;
 								state = STATE_CHILD;
 							} else
@@ -607,7 +608,7 @@ void *html_free_element(HtmlElement *element, int level) {
 		HtmlElement *sibbling = element->sibbling;
 		for(i = 0; i < level; i++)
 			printf("\t");
-		printf("element %i\n", element->tag);
+		printf("element %i: %s\n", element->tag, html_tag[element->tag]);
 		html_free_element(element->child, level + 1);
 		free(element);
 		element = sibbling;
