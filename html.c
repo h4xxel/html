@@ -293,7 +293,6 @@ HtmlDocument *html_parse_document(const char *string) {
 		STATE_COMMENT,
 		STATE_COMMENT_END1,
 		STATE_COMMENT_END2,
-		STATE_COMMENT_END3,
 		
 		STATES,
 	} state = STATE_CHILD;
@@ -356,7 +355,6 @@ HtmlDocument *html_parse_document(const char *string) {
 				continue;
 			case STATE_COMMENT:
 			case STATE_COMMENT_END1:
-			case STATE_COMMENT_END2:
 				switch(c) {
 					case '-':
 						state++;
@@ -365,7 +363,7 @@ HtmlDocument *html_parse_document(const char *string) {
 						state = STATE_COMMENT;
 						continue;
 				}
-			case STATE_COMMENT_END3:
+			case STATE_COMMENT_END2:
 				switch(c) {
 					case '>':
 						state = STATE_CHILD;
@@ -426,6 +424,14 @@ HtmlDocument *html_parse_document(const char *string) {
 						continue;
 				}
 			case STATE_ATTRIB_QUOTEVALUE:
+				switch(c) {
+					case '"':
+						//add attrib
+						state = STATE_ATTRIB;
+						continue;
+					default:
+						continue;
+				}
 			case STATE_ATTRIB_VALUE:
 				switch(c) {
 					CASE_SPACE:
@@ -436,10 +442,13 @@ HtmlDocument *html_parse_document(const char *string) {
 						//add attrib
 						state = STATE_CLOSE;
 						goto reswitch;
-					/*case '/':
+					case '"':
+						state = STATE_ATTRIB_QUOTEVALUE;
+					continue;
+					case '/':
 						//add attrib
 						state = STATE_SELFCLOSE;
-						continue;*/
+						continue;
 					default:
 						continue;
 				}
