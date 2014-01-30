@@ -190,7 +190,17 @@ static int stringcompare_tag(const char *s1, const char *s2, size_t length) {
 	}
 }
 
-int html_is_tag_selfclose(HtmlTag tag) {
+int html_tag_is_script(HtmlTag tag) {
+	switch(tag) {
+		case HTML_TAG_SCRIPT:
+		case HTML_TAG_STYLE:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+int html_tag_is_selfclose(HtmlTag tag) {
 	switch(tag) {
 		case HTML_TAG_BASE:
 		case HTML_TAG_BASEFONT:
@@ -262,12 +272,13 @@ HtmlDocument *html_parse_document(const char *string) {
 	//TODO: support text
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
-	//TODO: make sure we give comments proper handling, since they can contain >
+	//TODO: automatic handling of self closing tags
+	//TODO: support more xml bullcrap, like CDATA
 	
 	//int length;
 	char c;
 	const char *token;
-	HtmlTag tag;
+	HtmlTag tag = 0;
 	HtmlDocument *document;
 	HtmlElement *elem = NULL, *elem_tmp;
 	/*should we keep last sibling on the stack? might be sensible*/
@@ -314,14 +325,23 @@ HtmlDocument *html_parse_document(const char *string) {
 					case '<':
 						//add containing text
 						state = STATE_OPEN;
-						tag = 0;
+						//tag = 0;
 						continue;
 					default:
 						continue;
 				}
 			case STATE_OPEN:
+				if(tag == HTML_TAG_SCRIPT) {
+					/*I hate script tags*/
+					if(c != '/') {
+						state = STATE_CHILD;
+						continue;
+					}
+				}
 				switch(c) {
 					CASE_SPACE:
+						/*testing this*/
+						//state = STATE_CHILD;
 						continue;
 					
 					/*Comments, doctypes, xml-stuff and other crap we don't care about*/
@@ -455,6 +475,10 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_CLOSE:
 				switch(c) {
 					case '>':
+						if(tag == HTML_TAG_SCRIPT) {
+							state = STATE_CHILD;
+							continue;
+						}
 						//add to stack
 						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
 							goto error;
@@ -469,6 +493,7 @@ HtmlDocument *html_parse_document(const char *string) {
 						
 						push(&stack, elem);
 						elem = NULL;
+						tag = 0;
 						
 						state = STATE_CHILD;
 						continue;
@@ -499,6 +524,16 @@ HtmlDocument *html_parse_document(const char *string) {
 				switch(c) {
 					CASE_SPACE:
 						//find tag to close
+						if(tag == HTML_TAG_SCRIPT) {
+							if((string - 1) - token > strlen(html_tag[HTML_TAG_SCRIPT]))
+								state = STATE_CHILD;
+							else if(html_lookup_length_tag(token, (string - 1) - token) == HTML_TAG_SCRIPT) {
+								tag = 0;
+								state = STATE_END_CLOSE;
+							} else
+								state = STATE_CHILD;
+							continue;
+						}
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
@@ -513,6 +548,16 @@ HtmlDocument *html_parse_document(const char *string) {
 						continue;
 					case '>':
 						//find tag to close
+						if(tag == HTML_TAG_SCRIPT) {
+							if((string - 1) - token > strlen(html_tag[HTML_TAG_SCRIPT]))
+								state = STATE_CHILD;
+							else if(html_lookup_length_tag(token, (string - 1) - token) == HTML_TAG_SCRIPT) {
+								tag = 0;
+								state = STATE_CHILD;
+							} else
+								state = STATE_CHILD;
+							continue;
+						}
 						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
 							tag = elem->tag;
 						
