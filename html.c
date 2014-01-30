@@ -233,7 +233,7 @@ HtmlTag html_lookup_tag(const char *string) {
 	
 	while(imax >= imin) {
 		i = (imax - imin)/2 + imin;
-		res = strcasecmp(string, html_tag[i]);
+		res = stringcompare_tag(string, html_tag[i], ~0);
 		if(res < 0)
 			imax = i - 1;
 		else if(res > 0)
@@ -531,107 +531,6 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATES:
 				break;
 		}
-		
-		
-		
-		
-		
-		
-		
-		#if 0
-		
-		switch(state) {
-			case STATE_CHILD:
-				switch(c) {
-					case '<':
-						state = STATE_OPEN;
-						tag = 0;
-						elem_p = string;
-						continue;
-					case '&':
-						state = STATE_ENTITY;
-						entity_p = string;
-						continue;
-				}
-			case STATE_OPEN:
-				switch(c) {
-					case ' ':
-					case '\t':
-					case '\r':
-					case '\n':
-						if(!tag) {
-							arne = strndup(elem_p, ((void *) (string - 1)) - elem_p);
-							tag = html_lookup_tag(arne);
-						}
-						continue;
-					case '<':
-						/*push to stack, open another element.. perhaps*/
-						continue;
-					case '/':
-						/*save poiter, figure out which element to close*/
-						if(tag) {
-							/*self closing*/
-							
-							continue;
-						}
-						state = STATE_CLOSE;
-						elem_p = string;
-						continue;
-					case '>':
-						/*fill in the blanks*/
-						if(!(elem_tmp = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL)))
-							goto error;
-						if(elem) {
-							elem->sibbling = elem_tmp;
-							elem = elem_tmp;
-						} else {
-							elem = peek(&stack);
-							elem->child = elem_tmp;
-							elem = elem_tmp;
-						}
-						arne = strndup(elem_p, ((void *) (string - 1)) - elem_p);
-						if((tag = html_lookup_tag(arne)) < 0)
-							tag = 0;
-						free(arne);
-						
-						elem->tag = tag;
-						
-						state = STATE_CHILD;
-						push(&stack, elem);
-						elem = NULL;
-						continue;
-				}
-			case STATE_CLOSE:
-				/*find >*/
-				/*run up stack to find the right element*/
-				/**/
-				switch(c) {
-					case '>':
-						/*fix*/
-						arne = strndup(elem_p, ((void *) (string - 1)) - elem_p);
-						if((tag = html_lookup_tag(arne)) < 0)
-							tag = elem->tag;
-						free(arne);
-						
-						do {
-							/*check for null, broken pages*/
-							elem_tmp = pop(&stack);
-						} while(elem_tmp->tag != tag);
-						
-						elem = elem_tmp;
-						
-						state = STATE_CHILD;
-						continue;
-				}
-			case STATE_ENTITY:
-				if(c == ';') {
-					/*parse entity at *p*/
-					state = STATE_CHILD;
-				}
-			default:
-				break;
-		}
-		#endif
 	}
 	
 	while(pop(&stack));
