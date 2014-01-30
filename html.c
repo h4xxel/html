@@ -272,7 +272,6 @@ HtmlDocument *html_parse_document(const char *string) {
 	//TODO: support text
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
-	//TODO: automatic handling of self closing tags
 	//TODO: support more xml bullcrap, like CDATA
 	
 	//int length;
@@ -491,8 +490,10 @@ HtmlDocument *html_parse_document(const char *string) {
 							elem = elem_tmp;
 						}
 						
-						push(&stack, elem);
-						elem = NULL;
+						if(!html_tag_is_selfclose(tag)) {
+							push(&stack, elem);
+							elem = NULL;
+						}
 						tag = 0;
 						
 						state = STATE_CHILD;
@@ -567,6 +568,7 @@ HtmlDocument *html_parse_document(const char *string) {
 						} while(elem_tmp->tag != tag);
 						
 						elem = elem_tmp;
+						tag = 0;
 						
 						state = STATE_CHILD;
 						continue;
