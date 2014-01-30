@@ -211,6 +211,7 @@ int html_is_tag_selfclose(HtmlTag tag) {
 }
 
 HtmlTag html_lookup_length_tag(const char *string, size_t length) {
+	//TODO: optimize string compare for binary tree search (no "restarts")
 	int i, imin = 0, imax = HTML_TAGS, res;
 	
 	while(imax >= imin) {
@@ -258,6 +259,8 @@ HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *chil
 }
 
 HtmlDocument *html_parse_document(const char *string) {
+	//TODO: support text
+	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
 	//TODO: make sure we give comments proper handling, since they can contain >
 	
@@ -273,15 +276,24 @@ HtmlDocument *html_parse_document(const char *string) {
 	enum State {
 		STATE_CHILD,
 		STATE_OPEN,
+		STATE_DECLARATION,
 		STATE_BEGIN,
 		STATE_END,
 		STATE_ATTRIB,
 		STATE_ATTRIB_KEY,
 		STATE_ATTRIB_VALUE,
+		STATE_ATTRIB_QUOTEVALUE,
 		STATE_CLOSE,
 		STATE_SELFCLOSE,
 		STATE_END_CLOSE,
 		STATE_ENTITY,
+		
+		/*This is silly*/
+		STATE_COMMENT_BEGIN,
+		STATE_COMMENT,
+		STATE_COMMENT_END1,
+		STATE_COMMENT_END2,
+		STATE_COMMENT_END3,
 		
 		STATES,
 	} state = STATE_CHILD;
@@ -312,11 +324,15 @@ HtmlDocument *html_parse_document(const char *string) {
 				switch(c) {
 					CASE_SPACE:
 						continue;
+					
+					/*Comments, doctypes, xml-stuff and other crap we don't care about*/
 					case '!':
+						state = STATE_DECLARATION;
+						continue;
 					case '?':
-						/*Comments, doctypes, xml-stuff and other crap we don't care about*/
 						state = STATE_END_CLOSE;
 						continue;
+					
 					case '/':
 						token = string;
 						state = STATE_END;
@@ -324,6 +340,38 @@ HtmlDocument *html_parse_document(const char *string) {
 					default:
 						token = string - 1;
 						state = STATE_BEGIN;
+						continue;
+				}
+			case STATE_DECLARATION:
+				switch(c) {
+					case '-':
+						state = STATE_COMMENT_BEGIN;
+						continue;
+					default:
+						state = STATE_END_CLOSE;
+						continue;
+				}
+			case STATE_COMMENT_BEGIN:
+				state = STATE_COMMENT;
+				continue;
+			case STATE_COMMENT:
+			case STATE_COMMENT_END1:
+			case STATE_COMMENT_END2:
+				switch(c) {
+					case '-':
+						state++;
+						continue;
+					default:
+						state = STATE_COMMENT;
+						continue;
+				}
+			case STATE_COMMENT_END3:
+				switch(c) {
+					case '>':
+						state = STATE_CHILD;
+						continue;
+					default:
+						state = STATE_COMMENT;
 						continue;
 				}
 			case STATE_BEGIN:
@@ -363,6 +411,10 @@ HtmlDocument *html_parse_document(const char *string) {
 						//key=key add attrib
 						state = STATE_ATTRIB;
 						continue;
+					case '>':
+						//add attrib
+						state = STATE_CLOSE;
+						goto reswitch;
 					case '/':
 						//add attrib
 						state = STATE_SELFCLOSE;
@@ -373,16 +425,21 @@ HtmlDocument *html_parse_document(const char *string) {
 					default:
 						continue;
 				}
+			case STATE_ATTRIB_QUOTEVALUE:
 			case STATE_ATTRIB_VALUE:
 				switch(c) {
 					CASE_SPACE:
 						//add attrib
 						state = STATE_ATTRIB;
 						continue;
-					case '/':
+					case '>':
+						//add attrib
+						state = STATE_CLOSE;
+						goto reswitch;
+					/*case '/':
 						//add attrib
 						state = STATE_SELFCLOSE;
-						continue;
+						continue;*/
 					default:
 						continue;
 				}
