@@ -300,9 +300,6 @@ HtmlParseState *html_parse_begin() {
 }
 
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
-
-//HtmlDocument *html_parse_document(const char *string) {
-	//TODO: continuations
 	//TODO: support text content
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
