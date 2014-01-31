@@ -1,17 +1,18 @@
 #include <stdlib.h>
 #include "stack.h"
 
-void stack_push(Stack **stack, void *item) {
+void *stack_push(Stack **stack, void *item) {
 	struct Stack *n;
 	
 	if(!stack)
-		return;
+		return NULL;
 	if(!(n = malloc(sizeof(Stack))))
-		return;
+		return NULL;
 	
 	n->item = item;
 	n->next = *stack;
 	*stack = n;
+	return item;
 }
 
 void *stack_pop(Stack **stack) {

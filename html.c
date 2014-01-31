@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define HTML_PARSE_STATE_TYPE struct HtmlParseState
+
 #include "stack.h"
 #include "html.h"
 
@@ -122,6 +125,38 @@ const char const *html_tag[HTML_TAGS] = {
 	[HTML_TAG_VAR] = "var",
 };
 
+enum State {
+	STATE_CHILD,
+	STATE_OPEN,
+	STATE_DECLARATION,
+	STATE_BEGIN,
+	STATE_END,
+	STATE_ATTRIB,
+	STATE_ATTRIB_KEY,
+	STATE_ATTRIB_VALUE,
+	STATE_ATTRIB_QUOTEVALUE,
+	STATE_CLOSE,
+	STATE_SELFCLOSE,
+	STATE_END_CLOSE,
+	STATE_ENTITY,
+	
+	/*This is silly*/
+	STATE_COMMENT_BEGIN,
+	STATE_COMMENT,
+	STATE_COMMENT_END1,
+	STATE_COMMENT_END2,
+	
+	STATES,
+};
+
+struct HtmlParseState {
+	HtmlDocument *document;
+	Stack *stack;
+	HtmlElement *elem;
+	HtmlTag tag;
+	enum State state;
+};
+
 static int findtag(void *elem, void *tag) {
 	if(((HtmlElement *) elem)->tag == *((int *) tag))
 		return 1;
@@ -232,7 +267,41 @@ HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *chil
 	return elem;
 }
 
-HtmlDocument *html_parse_document(const char *string) {
+HtmlParseState *html_parse_begin() {
+	HtmlParseState *state;
+	if(!(state = malloc(sizeof(HtmlParseState))))
+		return NULL;
+	
+	state->document = NULL;
+	state->stack = NULL;
+	state->elem = NULL;
+	state->tag = 0;
+	state->state = STATE_CHILD;
+	
+	if(!(state->document = malloc(sizeof(HtmlDocument))))
+		goto error;
+	if(!(state->elem = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL)))
+		goto error;
+	if(!stack_push(&state->stack, state->elem))
+		goto error;
+	
+	state->document->root_element = state->elem;
+	state->elem = NULL;
+	
+	return state;
+	
+	error:
+	free(state->document);
+	free(state->elem);
+	while(stack_pop(&state->stack));
+	free(state);
+	
+	return NULL;
+}
+
+const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
+
+//HtmlDocument *html_parse_document(const char *string) {
 	//TODO: continuations
 	//TODO: support text content
 	//TODO: support attributes (with and without quotes)
@@ -240,136 +309,115 @@ HtmlDocument *html_parse_document(const char *string) {
 	//TODO: support more xml bullcrap, like CDATA
 	//TODO: handle unknown html elements
 	
-	//int length;
 	char c;
-	const char *token;
-	HtmlTag tag = 0;
-	HtmlDocument *document;
-	HtmlElement *elem = NULL, *elem_tmp;
-	/*should we keep last sibling on the stack? might be sensible*/
-	Stack *stack = NULL;
+	HtmlElement *elem_tmp;
+	size_t i;
 	
-	enum State {
-		STATE_CHILD,
-		STATE_OPEN,
-		STATE_DECLARATION,
-		STATE_BEGIN,
-		STATE_END,
-		STATE_ATTRIB,
-		STATE_ATTRIB_KEY,
-		STATE_ATTRIB_VALUE,
-		STATE_ATTRIB_QUOTEVALUE,
-		STATE_CLOSE,
-		STATE_SELFCLOSE,
-		STATE_END_CLOSE,
-		STATE_ENTITY,
-		
-		/*This is silly*/
-		STATE_COMMENT_BEGIN,
-		STATE_COMMENT,
-		STATE_COMMENT_END1,
-		STATE_COMMENT_END2,
-		
-		STATES,
-	} state = STATE_CHILD;
-	/*more states needed i think*/
-	
-	if(!string)
+	if(!(state && stream && len))
 		return NULL;
-	if(!(document = malloc(sizeof(HtmlDocument))))
-		return NULL;
-	if(!(document->root_element = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL)))
-		goto error;
-	stack_push(&stack, document->root_element);
 	
-	while((c = *string++)) {
+	for(i = 0; i < len; i++) {
+		c = *stream++;
 		reswitch:
-		switch(state) {
+		switch(state->state) {
 			case STATE_CHILD:
 				switch(c) {
 					case '<':
 						//add containing text
-						state = STATE_OPEN;
+						token = stream;
+						state->state = STATE_OPEN;
 						//tag = 0;
 						continue;
 					default:
+						if(html_tag_is_script(state->tag))
+							token = stream;
 						continue;
 				}
 			case STATE_OPEN:
-				if(html_tag_is_script(tag)) {
+				if(html_tag_is_script(state->tag)) {
 					/*I hate script tags*/
 					if(c != '/') {
-						state = STATE_CHILD;
+						token = stream;
+						state->state = STATE_CHILD;
 						continue;
 					}
 				}
 				switch(c) {
 					CASE_SPACE:
+						token = stream;
 						/*testing this*/
 						//state = STATE_CHILD;
 						continue;
 					
 					/*Comments, doctypes, xml-stuff and other crap we don't care about*/
 					case '!':
-						state = STATE_DECLARATION;
+						token = stream;
+						state->state = STATE_DECLARATION;
 						continue;
 					case '?':
-						state = STATE_END_CLOSE;
+						token = stream;
+						state->state = STATE_END_CLOSE;
 						continue;
 					
 					case '/':
-						token = string;
-						state = STATE_END;
+						token = stream;
+						state->state = STATE_END;
 						continue;
 					default:
-						token = string - 1;
-						state = STATE_BEGIN;
+						state->state = STATE_BEGIN;
 						continue;
 				}
 			case STATE_DECLARATION:
+				token = stream;
 				switch(c) {
 					case '-':
-						state = STATE_COMMENT_BEGIN;
+						state->state = STATE_COMMENT_BEGIN;
 						continue;
 					default:
-						state = STATE_END_CLOSE;
+						state->state = STATE_END_CLOSE;
 						continue;
 				}
 			case STATE_COMMENT_BEGIN:
-				state = STATE_COMMENT;
+				token = stream;
+				state->state = STATE_COMMENT;
 				continue;
 			case STATE_COMMENT:
 			case STATE_COMMENT_END1:
+				token = stream;
 				switch(c) {
 					case '-':
-						state++;
+						state->state++;
 						continue;
 					default:
-						state = STATE_COMMENT;
+						state->state = STATE_COMMENT;
 						continue;
 				}
 			case STATE_COMMENT_END2:
+				token = stream;
 				switch(c) {
 					case '>':
-						state = STATE_CHILD;
+						state->state = STATE_CHILD;
 						continue;
 					default:
-						state = STATE_COMMENT;
+						state->state = STATE_COMMENT;
 						continue;
 				}
 			case STATE_BEGIN:
 				switch(c) {
 					CASE_SPACE:
-						tag = html_lookup_length_tag(token, (string - 1) - token);
-						state = STATE_ATTRIB;
+						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->state = STATE_ATTRIB;
+						token = stream;
 						continue;
 					case '>':
-						tag = html_lookup_length_tag(token, (string - 1) - token);
-						state = STATE_CLOSE;
+						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->state = STATE_CLOSE;
+						token = stream;
 						goto reswitch;
 					case '/':
-						tag = html_lookup_length_tag(token, (string - 1) - token);
-						state = STATE_SELFCLOSE;
+						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->state = STATE_SELFCLOSE;
+						token = stream;
 						continue;
 					default:
 						continue;
@@ -377,33 +425,41 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_ATTRIB:
 				switch(c) {
 					CASE_SPACE:
+						token = stream;
 						continue;
 					case '/':
-						state = STATE_SELFCLOSE;
+						state->state = STATE_SELFCLOSE;
+						token = stream;
 						continue;
 					case '>':
-						state = STATE_CLOSE;
+						state->state = STATE_CLOSE;
+						token = stream;
 						goto reswitch;
 					default:
-						state = STATE_ATTRIB_KEY;
+						state->state = STATE_ATTRIB_KEY;
+						token = stream;
 						continue;
 				}
 			case STATE_ATTRIB_KEY:
 				switch(c) {
 					CASE_SPACE:
 						//key=key add attrib
-						state = STATE_ATTRIB;
+						state->state = STATE_ATTRIB;
+						token = stream;
 						continue;
 					case '>':
 						//add attrib
-						state = STATE_CLOSE;
+						state->state = STATE_CLOSE;
+						token = stream;
 						goto reswitch;
 					case '/':
 						//add attrib
-						state = STATE_SELFCLOSE;
+						state->state = STATE_SELFCLOSE;
+						token = stream;
 						continue;
 					case '=':
-						state = STATE_ATTRIB_VALUE;
+						state->state = STATE_ATTRIB_VALUE;
+						token = stream;
 						continue;
 					default:
 						continue;
@@ -412,7 +468,8 @@ HtmlDocument *html_parse_document(const char *string) {
 				switch(c) {
 					case '"':
 						//add attrib
-						state = STATE_ATTRIB;
+						state->state = STATE_ATTRIB;
+						token = stream;
 						continue;
 					default:
 						continue;
@@ -421,18 +478,22 @@ HtmlDocument *html_parse_document(const char *string) {
 				switch(c) {
 					CASE_SPACE:
 						//add attrib
-						state = STATE_ATTRIB;
+						state->state = STATE_ATTRIB;
+						token = stream;
 						continue;
 					case '>':
 						//add attrib
-						state = STATE_CLOSE;
+						state->state = STATE_CLOSE;
+						token = stream;
 						goto reswitch;
 					case '"':
-						state = STATE_ATTRIB_QUOTEVALUE;
+						state->state = STATE_ATTRIB_QUOTEVALUE;
+						token = stream;
 					continue;
 					case '/':
 						//add attrib
-						state = STATE_SELFCLOSE;
+						state->state = STATE_SELFCLOSE;
+						token = stream;
 						continue;
 					default:
 						continue;
@@ -440,116 +501,124 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_CLOSE:
 				switch(c) {
 					case '>':
-						if(html_tag_is_script(tag)) {
-							state = STATE_CHILD;
+						token = stream;
+						if(html_tag_is_script(state->tag)) {
+							state->state = STATE_CHILD;
 							continue;
 						}
 						//add to stack
-						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
+						if(!(elem_tmp = html_new_element(state->tag, NULL, NULL, NULL)))
 							goto error;
-						if(elem) {
-							elem->sibbling = elem_tmp;
-							elem = elem_tmp;
+						if(state->elem) {
+							state->elem->sibbling = elem_tmp;
+							state->elem = elem_tmp;
 						} else {
-							elem = stack_peek(&stack);
-							elem->child = elem_tmp;
-							elem = elem_tmp;
+							state->elem = stack_peek(&state->stack);
+							state->elem->child = elem_tmp;
+							state->elem = elem_tmp;
 						}
 						
-						if(!html_tag_is_selfclose(tag)) {
-							stack_push(&stack, elem);
-							elem = NULL;
+						if(!html_tag_is_selfclose(state->tag)) {
+							stack_push(&state->stack, state->elem);
+							state->elem = NULL;
 						}
-						tag = 0;
+						state->tag = 0;
 						
-						state = STATE_CHILD;
+						state->state = STATE_CHILD;
 						continue;
 					default:
+						token = stream;
 						continue;
 				}
 			case STATE_SELFCLOSE:
 				switch(c) {
 					case '>':
-						if(html_tag_is_script(tag)) {
-							state = STATE_CHILD;
+						token = stream;
+						if(html_tag_is_script(state->tag)) {
+							state->state = STATE_CHILD;
 							continue;
 						}
 						//add to stack
-						if(!(elem_tmp = html_new_element(tag, NULL, NULL, NULL)))
+						if(!(elem_tmp = html_new_element(state->tag, NULL, NULL, NULL)))
 							goto error;
-						if(elem) {
-							elem->sibbling = elem_tmp;
-							elem = elem_tmp;
+						if(state->elem) {
+							state->elem->sibbling = elem_tmp;
+							state->elem = elem_tmp;
 						} else {
-							elem = stack_peek(&stack);
-							elem->child = elem_tmp;
-							elem = elem_tmp;
+							state->elem = stack_peek(&state->stack);
+							state->elem->child = elem_tmp;
+							state->elem = elem_tmp;
 						}
 						
-						state = STATE_CHILD;
+						state->state = STATE_CHILD;
 						continue;
 					default:
+						token = stream;
 						continue;
 				}
 			case STATE_END:
 				switch(c) {
 					CASE_SPACE:
 						//find tag to close
-						if(html_tag_is_script(tag)) {
-							if((string - 1) - token > strlen(html_tag[tag]))
-								state = STATE_CHILD;
-							else if(html_lookup_length_tag(token, (string - 1) - token) == tag) {
-								tag = 0;
-								state = STATE_END_CLOSE;
+						if(html_tag_is_script(state->tag)) {
+							if((stream - 1) - token > strlen(html_tag[state->tag]))
+								state->state = STATE_CHILD;
+							else if(html_lookup_length_tag(token, (stream - 1) - token) == state->tag) {
+								state->tag = 0;
+								state->state = STATE_END_CLOSE;
 							} else
-								state = STATE_CHILD;
+								state->state = STATE_CHILD;
+							token = stream;
 							continue;
 						}
-						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
-							tag = elem->tag;
+						if((state->tag = html_lookup_length_tag(token, (stream - 1) - token)) < 0)
+							state->tag = state->elem->tag;
 						
-						if(!stack_find(&stack, findtag, &tag)) {
-							state = STATE_CHILD;
+						token = stream;
+						if(!stack_find(&state->stack, findtag, &state->tag)) {
+							state->state = STATE_CHILD;
 							continue;
 						}
 						
 						do {
 							/*check for null, broken pages*/
-							elem_tmp = stack_pop(&stack);
-						} while(elem_tmp->tag != tag);
+							elem_tmp = stack_pop(&state->stack);
+						} while(elem_tmp->tag != state->tag);
 						
-						elem = elem_tmp;
+						state->elem = elem_tmp;
 						
-						state = STATE_END_CLOSE;
+						state->state = STATE_END_CLOSE;
 						continue;
 					case '>':
 						//find tag to close
-						if(html_tag_is_script(tag)) {
-							if((string - 1) - token > strlen(html_tag[tag]))
-								state = STATE_CHILD;
-							else if(html_lookup_length_tag(token, (string - 1) - token) == tag) {
-								tag = 0;
-								state = STATE_CHILD;
+						if(html_tag_is_script(state->tag)) {
+							if((stream - 1) - token > strlen(html_tag[state->tag]))
+								state->state = STATE_CHILD;
+							else if(html_lookup_length_tag(token, (stream - 1) - token) == state->tag) {
+								state->tag = 0;
+								state->state = STATE_CHILD;
 							} else
-								state = STATE_CHILD;
+								state->state = STATE_CHILD;
+							token = stream;
 							continue;
 						}
-						if((tag = html_lookup_length_tag(token, (string - 1) - token)) < 0)
-							tag = elem->tag;
+						if((state->tag = html_lookup_length_tag(token, (stream - 1) - token)) < 0)
+							state->tag = state->elem->tag;
 						
-						if(!stack_find(&stack, findtag, &tag)) {
-							state = STATE_CHILD;
+						token = stream;
+						if(!stack_find(&state->stack, findtag, &state->tag)) {
+							state->state = STATE_CHILD;
 							continue;
 						}
 						do {
 							/*check for null, broken pages*/
-							elem_tmp = stack_pop(&stack);
-						} while(elem_tmp->tag != tag);
+							elem_tmp = stack_pop(&state->stack);
+						} while(elem_tmp->tag != state->tag);
 						
-						elem = elem_tmp;
-						tag = 0;
+						state->elem = elem_tmp;
+						state->tag = 0;
 						
-						state = STATE_CHILD;
+						state->state = STATE_CHILD;
 						continue;
 					default:
 						continue;
@@ -557,7 +626,8 @@ HtmlDocument *html_parse_document(const char *string) {
 			case STATE_END_CLOSE:
 				switch(c) {
 					case '>':
-						state = STATE_CHILD;
+						state->state = STATE_CHILD;
+						token = stream;
 						continue;
 					default:
 						continue;
@@ -567,15 +637,24 @@ HtmlDocument *html_parse_document(const char *string) {
 				break;
 		}
 	}
-	
-	while(stack_pop(&stack));
-	
-	return document;
+	return token;
 	
 	error:
-	html_free_document(document);
-	fprintf(stderr, "ERROR\n");
+	/*Handle malloc fail somehow*/
 	return NULL;
+}
+
+HtmlDocument *html_parse_end(HtmlParseState *state) {
+	HtmlDocument *document;
+	
+	if(!state)
+		return NULL;
+	
+	document = state->document;
+	while(stack_pop(&state->stack));
+	free(state);
+	
+	return document;
 }
 
 void *html_free_element(HtmlElement *element, int level) {

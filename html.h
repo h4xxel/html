@@ -3,6 +3,10 @@
 
 #include "stack.h"
 
+#ifndef HTML_PARSE_STATE_TYPE
+#define HTML_PARSE_STATE_TYPE void
+#endif
+
 /*keep sorted, binary search*/
 typedef enum HtmlTag HtmlTag;
 enum HtmlTag {
@@ -150,17 +154,16 @@ struct HtmlDocument {
 	HtmlElement *root_element;
 };
 
-typedef struct HtmlParseState HtmlParseState;
-struct HtmlParseState {
-	HtmlDocument *document;
-	Stack *stack;
-};
+typedef HTML_PARSE_STATE_TYPE HtmlParseState;
+
 
 extern const char const *html_tag[HTML_TAGS];
 extern const char const *html_attrib_key[HTML_ATTRIB_KEYS];
 
 HtmlTag html_lookup_tag(const char *string);
-HtmlDocument *html_parse_document(const char *string);
+HtmlParseState *html_parse_begin();
+const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len);
+HtmlDocument *html_parse_end(HtmlParseState *state);
 void *html_free_element(HtmlElement *element, int level);
 void *html_free_document(HtmlDocument *document);
 

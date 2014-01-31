@@ -7,7 +7,7 @@ struct Stack {
 	struct Stack *next;
 };
 
-void stack_push(Stack **stack, void *item);
+void *stack_push(Stack **stack, void *item);
 void *stack_pop(Stack **stack);
 void *stack_peek(Stack **stack);
 int stack_find(struct Stack **stack, int (func)(void *, void *), void *data);
