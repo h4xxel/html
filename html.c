@@ -215,6 +215,15 @@ static char *stringduplicate_length(const char *string, size_t len) {
 	return ret;
 }
 
+static const char *stringtrim_l(const char *string) {
+	if(!string)
+		return NULL;
+	while(*string && isspace(*string))
+		string ++;
+	
+	return string;
+}
+
 int html_tag_is_script(HtmlTag tag) {
 	switch(tag) {
 		case HTML_TAG_SCRIPT:
@@ -358,8 +367,17 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						if(state->stringlen) {
 							if(state->stringlen > 1 || !isspace(*token)) {
 								text = stringduplicate_length(token, state->stringlen);
-								printf("text (%zi): %s\n", strlen(text), text);
-								free(text);
+								
+								if(!(elem_tmp = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, text)))
+									goto error;
+								if(state->elem) {
+									state->elem->sibbling = elem_tmp;
+									state->elem = elem_tmp;
+								} else {
+									state->elem = stack_peek(&state->stack);
+									state->elem->child = elem_tmp;
+									state->elem = elem_tmp;
+								}
 							}
 						}
 						ADVANCE_TOKEN;
@@ -717,7 +735,14 @@ void *html_free_element(HtmlElement *element, int level) {
 		HtmlElement *sibbling = element->sibbling;
 		for(i = 0; i < level; i++)
 			printf("\t");
-		printf("element %i: %s\n", element->tag, html_tag[element->tag]);
+		if(element->text) {
+			if(element->tag == HTML_TAG_NONE)
+				printf("text   : %s\n", stringtrim_l(element->text));
+			else	
+				printf("element %s: %s\n", html_tag[element->tag], stringtrim_l(element->text));
+			free(element->text);
+		} else
+			printf("element: %s\n", html_tag[element->tag]);
 		html_free_element(element->child, level + 1);
 		free(element);
 		element = sibbling;
