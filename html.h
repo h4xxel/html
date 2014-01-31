@@ -144,6 +144,7 @@ struct HtmlAttrib {
 typedef struct HtmlElement HtmlElement;
 struct HtmlElement {
 	HtmlTag tag;
+	char *text;
 	HtmlAttrib *attrib;
 	HtmlElement *child;
 	HtmlElement *sibbling;
