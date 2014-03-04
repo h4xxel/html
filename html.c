@@ -679,10 +679,13 @@ HtmlDocument *html_parse_end(HtmlParseState *state) {
 
 void *html_print_dom_element(HtmlElement *element, int level) {
 	int i;
+	HtmlElement *sibbling;
+	HtmlAttrib *attrib;
+
 	if(!element)
 		return NULL;
 	while(element) {
-		HtmlElement *sibbling = element->sibbling;
+		sibbling = element->sibbling;
 		for(i = 0; i < level; i++)
 			printf("\t");
 		if(element->text) {
@@ -690,8 +693,17 @@ void *html_print_dom_element(HtmlElement *element, int level) {
 				printf("text   : %s\n", stringtrim_l(element->text));
 			else	
 				printf("element %s: %s\n", html_tag[element->tag], stringtrim_l(element->text));
-		} else
-			printf("element: %s\n", html_tag[element->tag]);
+		} else {
+			printf("element: %s ", html_tag[element->tag]);
+			attrib = element->attrib;
+			if (attrib) {
+				do{
+					printf("%s=%s ", html_attrib[attrib->key], attrib->value);
+					attrib = attrib->next;
+				}while(attrib);
+			}
+			printf("\n");
+		}
 		html_print_dom_element(element->child, level + 1);
 		element = sibbling;
 	}
