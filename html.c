@@ -727,7 +727,7 @@ HtmlDocument *html_parse_end(HtmlParseState *state) {
 	return document;
 }
 
-void *html_free_element(HtmlElement *element, int level) {
+void *html_print_tree_element(HtmlElement *element, int level) {
 	int i;
 	if(!element)
 		return NULL;
@@ -740,9 +740,27 @@ void *html_free_element(HtmlElement *element, int level) {
 				printf("text   : %s\n", stringtrim_l(element->text));
 			else	
 				printf("element %s: %s\n", html_tag[element->tag], stringtrim_l(element->text));
-			free(element->text);
 		} else
 			printf("element: %s\n", html_tag[element->tag]);
+		html_print_tree_element(element->child, level + 1);
+		element = sibbling;
+	}
+	return NULL;
+}
+
+void *html_print_tree(HtmlDocument *document) {
+	html_print_tree_element(document->root_element, 0);
+	return NULL;
+}
+
+void *html_free_element(HtmlElement *element, int level) {
+	if(!element)
+		return NULL;
+	while(element) {
+		HtmlElement *sibbling = element->sibbling;
+		if(element->text) {
+			free(element->text);
+		}
 		html_free_element(element->child, level + 1);
 		free(element);
 		element = sibbling;

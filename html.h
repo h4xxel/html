@@ -166,6 +166,11 @@ HtmlParseState *html_parse_begin();
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len);
 HtmlDocument *html_parse_end(HtmlParseState *state);
 void *html_free_element(HtmlElement *element, int level);
+
+// printing
+void *html_print_tree(HtmlDocument *document);
+void *html_print_tree_element(HtmlElement *element, int level);
+
 void *html_free_document(HtmlDocument *document);
 
 #endif
