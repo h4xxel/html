@@ -146,7 +146,7 @@ HtmlTag html_lookup_length_tag(const char *string, size_t length) {
 	//TODO: optimize string compare for binary tree search (no "restarts")
 	int i, imin = 0, imax = HTML_TAGS, res;
 	
-	while(imax >= imin) {
+	while(imax > imin) {
 		i = (imax - imin)/2 + imin;
 		res = stringcompare(string, html_tag[i], length);
 		if(res < 0)
@@ -163,7 +163,7 @@ HtmlTag html_lookup_length_tag(const char *string, size_t length) {
 HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 	int i, imin = 0, imax = HTML_ATTRIB_KEYS, res;
 	
-	while(imax >= imin) {
+	while(imax > imin) {
 		i = (imax - imin)/2 + imin;
 		res = stringcompare(string, html_attrib[i], length);
 		if(res < 0)
@@ -180,7 +180,7 @@ HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 HtmlTag html_lookup_tag(const char *string) {
 	int i, imin = 0, imax = HTML_TAGS, res;
 	
-	while(imax >= imin) {
+	while(imax > imin) {
 		i = (imax - imin)/2 + imin;
 		res = stringcompare(string, html_tag[i], ~0);
 		if(res < 0)
@@ -256,7 +256,6 @@ HtmlParseState *html_parse_begin() {
 }
 
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
-	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
 	//TODO: handle unknown html elements
