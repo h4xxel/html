@@ -2,6 +2,7 @@
 #define __HTML_H_
 
 #include "stack.h"
+#include "attrib.h"
 
 #ifndef HTML_PARSE_STATE_TYPE
 #define HTML_PARSE_STATE_TYPE void
@@ -126,21 +127,6 @@ enum HtmlTag {
 	HTML_TAGS,
 };
 
-typedef enum HtmlAttribKey HtmlAttribKey;
-enum HtmlAttribKey {
-	HTML_ATTRIB_WIDTH,
-	HTML_ATTRIB_HEIGHT,
-	
-	HTML_ATTRIB_KEYS,
-};
-
-typedef struct HtmlAttrib HtmlAttrib;
-struct HtmlAttrib {
-	HtmlAttribKey key;
-	char *value;
-	HtmlAttrib *next;
-};
-
 typedef struct HtmlElement HtmlElement;
 struct HtmlElement {
 	HtmlTag tag;
@@ -165,7 +151,10 @@ HtmlTag html_lookup_tag(const char *string);
 HtmlParseState *html_parse_begin();
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len);
 HtmlDocument *html_parse_end(HtmlParseState *state);
-void *html_free_element(HtmlElement *element, int level);
+void *html_free_element(HtmlElement *element);
+
+// attribs
+HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, const char* value, size_t length);
 
 // printing
 void *html_print_tree(HtmlDocument *document);
