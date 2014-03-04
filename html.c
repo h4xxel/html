@@ -378,11 +378,11 @@ HtmlParseState *html_parse_begin() {
 }
 
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
-	//TODO: support text content
 	//TODO: support attributes (with and without quotes)
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
 	//TODO: handle unknown html elements
+	//TODO: handle unknown attributes
 	
 	#define ADVANCE_TOKEN token = stream; \
 		state->stringlen = 0; \
@@ -552,17 +552,30 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 			case STATE_ATTRIB_KEY:
 				switch(c) {
 					CASE_SPACE:
-						//key=key add attrib
+						//key key
+						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_ATTRIB;
 						ADVANCE_TOKEN;
 						continue;
 					case '>':
-						//add attrib
+						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_CLOSE;
 						ADVANCE_TOKEN;
 						goto reswitch;
 					case '/':
-						//add attrib
+						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_SELFCLOSE;
 						ADVANCE_TOKEN;
 						continue;
@@ -576,6 +589,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 				}
 			case STATE_ATTRIB_QUOTEVALUE:
 				switch(c) {
+					case '\'':
 					case '"':
 						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
 						attrib_append(&state->attrib, attrib_tmp);
@@ -590,21 +604,31 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 			case STATE_ATTRIB_VALUE:
 				switch(c) {
 					CASE_SPACE:
-						//add attrib
+						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_ATTRIB;
 						ADVANCE_TOKEN;
 						continue;
 					case '>':
-						//add attrib
+						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_CLOSE;
 						ADVANCE_TOKEN;
 						goto reswitch;
 					case '"':
+					case '\'':
 						state->state = STATE_ATTRIB_QUOTEVALUE;
 						ADVANCE_TOKEN;
-					continue;
+						continue;
 					case '/':
-						//add attrib
+						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_append(&state->attrib, attrib_tmp);
+						attrib_tmp = NULL;
+						
 						state->state = STATE_SELFCLOSE;
 						ADVANCE_TOKEN;
 						continue;
