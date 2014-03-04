@@ -38,6 +38,8 @@ int main(int argc, char **argv) {
 	doc = html_parse_end(parse_state);
 	fclose(f);
 	
+	html_print_dom(doc);
+	
 	html_free_document(doc);
 	
 	return 0;

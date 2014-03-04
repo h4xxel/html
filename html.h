@@ -157,8 +157,8 @@ void *html_free_element(HtmlElement *element);
 HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, const char* value, size_t length);
 
 // printing
-void *html_print_tree(HtmlDocument *document);
-void *html_print_tree_element(HtmlElement *element, int level);
+void *html_print_dom(HtmlDocument *document);
+void *html_print_dom_element(HtmlElement *element, int level);
 
 void *html_free_document(HtmlDocument *document);
 

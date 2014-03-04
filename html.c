@@ -775,7 +775,7 @@ HtmlDocument *html_parse_end(HtmlParseState *state) {
 	return document;
 }
 
-void *html_print_tree_element(HtmlElement *element, int level) {
+void *html_print_dom_element(HtmlElement *element, int level) {
 	int i;
 	if(!element)
 		return NULL;
@@ -790,14 +790,14 @@ void *html_print_tree_element(HtmlElement *element, int level) {
 				printf("element %s: %s\n", html_tag[element->tag], stringtrim_l(element->text));
 		} else
 			printf("element: %s\n", html_tag[element->tag]);
-		html_print_tree_element(element->child, level + 1);
+		html_print_dom_element(element->child, level + 1);
 		element = sibbling;
 	}
 	return NULL;
 }
 
-void *html_print_tree(HtmlDocument *document) {
-	html_print_tree_element(document->root_element, 0);
+void *html_print_dom(HtmlDocument *document) {
+	html_print_dom_element(document->root_element, 0);
 	return NULL;
 }
 
