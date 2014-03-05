@@ -728,7 +728,7 @@ void *html_free_attrib(HtmlAttrib *attrib) {
 	html_free_attrib(attrib->next);
 	attrib->key = HTML_ATTRIB_NONE;
 	free(attrib->value);
-	attrib->next = 0;
+	free(attrib->next);
 	return NULL;
 }
 
