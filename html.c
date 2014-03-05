@@ -156,7 +156,9 @@ HtmlTag html_lookup_length_tag(const char *string, size_t length) {
 		else
 			return i;
 	}
-	
+	if(imax == imin) {
+		return imax;
+	}
 	return 0;
 }
 
@@ -173,7 +175,9 @@ HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 		else
 			return i;
 	}
-	
+	if(imax == imin) {
+		return imax;
+	}
 	return 0;
 }
 
@@ -190,7 +194,9 @@ HtmlTag html_lookup_tag(const char *string) {
 		else
 			return i;
 	}
-	
+	if(imax == imin) {
+		return imax;
+	}
 	return 0;
 }
 
@@ -696,10 +702,12 @@ void *html_print_dom_element(HtmlElement *element, int level) {
 			printf("element: %s ", html_tag[element->tag]);
 			attrib = element->attrib;
 			if (attrib) {
+				printf("[ ");
 				do{
-					printf("%s=%s ", html_attrib[attrib->key], attrib->value);
+					printf("%s=\"%s\" ", html_attrib[attrib->key], attrib->value);
 					attrib = attrib->next;
 				}while(attrib);
+				printf("]");
 			}
 			printf("\n");
 		}
