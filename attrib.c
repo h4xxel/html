@@ -40,6 +40,7 @@ const char const *html_attrib[HTML_ATTRIB_KEYS] = {
 	
 	[HTML_ATTRIB_ENCTYPE] = "enctype",
 	
+	[HTML_ATTRIB_FACE] = "face",
 	[HTML_ATTRIB_FOR] = "for",
 	[HTML_ATTRIB_FRAME] = "frame",
 	[HTML_ATTRIB_FRAMEBORDER] = "frameborder",
