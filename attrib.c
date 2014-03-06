@@ -121,6 +121,9 @@ const char const *html_attrib[HTML_ATTRIB_KEYS] = {
 	[HTML_ATTRIB_VALUETYPE] = "valuetype",
 	
 	[HTML_ATTRIB_WIDTH] = "width",
+
+	[HTML_ATTRIB_XML__LANG] = "xml:lang",
+	[HTML_ATTRIB_XMLNS] = "xmlns",
 };
 
 static HtmlAttrib *attrib_get_last(HtmlAttrib *item) {
