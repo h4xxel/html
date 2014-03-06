@@ -1,0 +1,34 @@
+#ifndef __HTML_ENTITIES__
+#define __HTML_ENTITIES__
+
+enum HTML_ENTITY {
+	HTML_ENTITY_NONE,
+	
+	HTML_ENTITY_ae,
+	HTML_ENTITY_AE,
+	HTML_ENTITY_AMP,
+	
+	HTML_ENTITY_COPY,
+	
+	HTML_ENTITY_EURO,
+	
+	HTML_ENTITY_GT,
+	
+	HTML_ENTITY_NBSP,
+	
+	HTML_ENTITY_oe,
+	HTML_ENTITY_OE,
+	
+	HTML_ENTITY_QUOT,
+	
+	HTML_ENTITY_SZ,
+	
+	HTML_ENTITY_ue,
+	HTML_ENTITY_UE,
+	
+	HTML_ENTITY_LAST
+};
+
+void *html_replace_entities(char **text, size_t length);
+
+#endif
