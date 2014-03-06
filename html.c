@@ -142,31 +142,13 @@ int html_tag_is_selfclose(HtmlTag tag) {
 	}
 }
 
-HtmlTag html_lookup_length_tag(const char *string, size_t length) {
-	//TODO: optimize string compare for binary tree search (no "restarts")
-	int i, imin = 0, imax = HTML_TAGS, res;
-	
-	while(imax > imin) {
-		i = (imax - imin)/2 + imin;
-		res = stringcompare(string, html_tag[i], length);
-		if(res < 0)
-			imax = i - 1;
-		else if(res > 0)
-			imin = i + 1;
-		else
-			return i;
-	}
-	if(imax == imin) {
-		return imax;
-	}
-	return 0;
-}
-
 HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 	int i, imin = 0, imax = HTML_ATTRIB_KEYS, res;
 	
-	while(imax > imin) {
+	while(imax >= imin) {
 		i = (imax - imin)/2 + imin;
+		if (i==HTML_ATTRIB_KEYS)
+			break;
 		res = stringcompare(string, html_attrib[i], length);
 		if(res < 0)
 			imax = i - 1;
@@ -175,18 +157,18 @@ HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 		else
 			return i;
 	}
-	if(imax == imin) {
-		return imax;
-	}
 	return 0;
 }
 
-HtmlTag html_lookup_tag(const char *string) {
+HtmlTag html_lookup_length_tag(const char *string, size_t length) {
+	//TODO: optimize string compare for binary tree search (no "restarts")
 	int i, imin = 0, imax = HTML_TAGS, res;
-	
-	while(imax > imin) {
+
+	while(imax >= imin) {
 		i = (imax - imin)/2 + imin;
-		res = stringcompare(string, html_tag[i], ~0);
+		if (i==HTML_TAGS)
+			break;
+		res = stringcompare(string, html_tag[i], length);
 		if(res < 0)
 			imax = i - 1;
 		else if(res > 0)
@@ -194,8 +176,24 @@ HtmlTag html_lookup_tag(const char *string) {
 		else
 			return i;
 	}
-	if(imax == imin) {
-		return imax;
+
+	return 0;
+}
+
+HtmlTag html_lookup_tag(const char *string) {
+	int i, imin = 0, imax = HTML_TAGS, res;
+	
+	while(imax >= imin) {
+		i = (imax - imin)/2 + imin;
+		if (i==HTML_TAGS)
+			break;
+		res = stringcompare(string, html_tag[i], ~0);
+		if(res < 0)
+			imax = i - 1;
+		else if(res > 0)
+			imin = i + 1;
+		else
+			return i;
 	}
 	return 0;
 }
