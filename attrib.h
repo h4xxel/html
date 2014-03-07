@@ -5,6 +5,8 @@ typedef enum HtmlAttribKey HtmlAttribKey;
 enum HtmlAttribKey {
 	HTML_ATTRIB_NONE,
 	
+	HTML_ATTRIB_UNKNOWN,
+	
 	HTML_ATTRIB_ABBR,
 	HTML_ATTRIB_ACCEPT_CHARSET,
 	HTML_ATTRIB_ACCEPT,
@@ -131,6 +133,8 @@ enum HtmlAttribKey {
 typedef struct HtmlAttrib HtmlAttrib;
 struct HtmlAttrib {
 	HtmlAttribKey key;
+	char *key_name;
+	
 	char *value;
 	HtmlAttrib *next;
 };

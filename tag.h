@@ -6,6 +6,8 @@ typedef enum HtmlTag HtmlTag;
 enum HtmlTag {
 	HTML_TAG_NONE,
 	
+	HTML_TAG_UNKNOWN,
+	
 	HTML_TAG_COMMENT,
 	HTML_TAG_DOCTYPE,
 	

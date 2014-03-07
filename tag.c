@@ -5,6 +5,9 @@
 /*keep sorted, binary search*/
 const char const *html_tag[HTML_TAGS] = {
 	[HTML_TAG_NONE] = "",
+	
+	[HTML_TAG_UNKNOWN] = "",
+	
 	[HTML_TAG_COMMENT] = "!--",
 	[HTML_TAG_DOCTYPE] = "!doctype",
 	

@@ -6,6 +6,8 @@
 const char const *html_attrib[HTML_ATTRIB_KEYS] = {
 	[HTML_ATTRIB_NONE] = "",
 	
+	[HTML_ATTRIB_UNKNOWN] = "",
+	
 	[HTML_ATTRIB_ABBR] = "abbr",
 	[HTML_ATTRIB_ACCEPT_CHARSET] = "accept-charset",
 	[HTML_ATTRIB_ACCEPT] = "accept",

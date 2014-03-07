@@ -41,8 +41,11 @@ struct HtmlParseState {
 	Stack *stack;
 	HtmlElement *elem;
 	HtmlTag tag;
+	
 	HtmlAttrib *attrib;
 	HtmlAttribKey attrib_key;
+	char *attrib_key_name;
+	
 	enum State state;
 	
 	/*used for stripping out spaces*/
@@ -101,7 +104,7 @@ HtmlAttribKey html_lookup_length_attrib_key(const char *string, size_t length) {
 		else
 			return i;
 	}
-	return 0;
+	return HTML_ATTRIB_UNKNOWN;
 }
 
 HtmlTag html_lookup_length_tag(const char *string, size_t length) {
@@ -121,7 +124,7 @@ HtmlTag html_lookup_length_tag(const char *string, size_t length) {
 			return i;
 	}
 
-	return 0;
+	return HTML_TAG_UNKNOWN;
 }
 
 HtmlTag html_lookup_tag(const char *string) {
@@ -139,15 +142,16 @@ HtmlTag html_lookup_tag(const char *string) {
 		else
 			return i;
 	}
-	return 0;
+	return HTML_TAG_UNKNOWN;
 }
 
-HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, const char* value, size_t length) {
+HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, char *key_name, const char* value, size_t length) {
 	HtmlAttrib *attrib;
 	if(!(attrib = malloc(sizeof(HtmlAttrib))))
 		return NULL;
 	
 	attrib->key = key;
+	attrib->key_name = key_name;
 	attrib->value = stringduplicate_length(value, length);
 	attrib->next = NULL;
 	
@@ -207,7 +211,6 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
 	//TODO: handle unknown html elements
-	//TODO: handle unknown attributes
 	
 	#define ADVANCE_TOKEN token = stream; \
 		state->stringlen = 0; \
@@ -379,7 +382,8 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 					CASE_SPACE:
 						//key key
 						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
-						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						state->attrib_key_name = stringduplicate_length(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, NULL, 0);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -388,7 +392,8 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						continue;
 					case '>':
 						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
-						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						state->attrib_key_name = stringduplicate_length(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, NULL, 0);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -397,7 +402,8 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						goto reswitch;
 					case '/':
 						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
-						attrib_tmp = html_new_element_attrib(state->attrib_key, NULL, 0);
+						state->attrib_key_name = stringduplicate_length(token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, NULL, 0);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -406,6 +412,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						continue;
 					case '=':
 						state->attrib_key = html_lookup_length_attrib_key(token, (stream - 1) - token);
+						state->attrib_key_name = stringduplicate_length(token, (stream - 1) - token);
 						state->state = STATE_ATTRIB_VALUE;
 						ADVANCE_TOKEN;
 						continue;
@@ -416,7 +423,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 				switch(c) {
 					case '\'':
 					case '"':
-						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, token, (stream - 1) - token);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -429,7 +436,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 			case STATE_ATTRIB_VALUE:
 				switch(c) {
 					CASE_SPACE:
-						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, token, (stream - 1) - token);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -437,7 +444,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						ADVANCE_TOKEN;
 						continue;
 					case '>':
-						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, token, (stream - 1) - token);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -450,7 +457,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						ADVANCE_TOKEN;
 						continue;
 					case '/':
-						attrib_tmp = html_new_element_attrib(state->attrib_key, token, (stream - 1) - token);
+						attrib_tmp = html_new_element_attrib(state->attrib_key, state->attrib_key_name, token, (stream - 1) - token);
 						attrib_append(&state->attrib, attrib_tmp);
 						attrib_tmp = NULL;
 						
@@ -486,6 +493,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						}
 						state->tag = 0;
 						state->attrib = 0;
+						state->attrib_key_name = 0;
 						
 						state->state = STATE_CHILD;
 						continue;
@@ -514,6 +522,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						}
 						state->tag = 0;
 						state->attrib = 0;
+						state->attrib_key_name = 0;
 						
 						state->state = STATE_CHILD;
 						continue;
@@ -582,6 +591,8 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						
 						state->elem = elem_tmp;
 						state->tag = 0;
+						state->attrib = 0;
+						state->attrib_key_name = 0;
 						
 						state->state = STATE_CHILD;
 						continue;
@@ -646,7 +657,11 @@ void *html_print_dom_element(HtmlElement *element, int level) {
 			if (attrib) {
 				printf("[ ");
 				do{
-					printf("%s=\"%s\" ", html_attrib[attrib->key], attrib->value);
+					if (attrib->key == HTML_ATTRIB_UNKNOWN) {
+						printf("%s=\"%s\" ", attrib->key_name, attrib->value);
+					} else {
+						printf("%s=\"%s\" ", html_attrib[attrib->key], attrib->value);
+					}
 					attrib = attrib->next;
 				}while(attrib);
 				printf("]");

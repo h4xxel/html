@@ -33,9 +33,6 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 HtmlDocument *html_parse_end(HtmlParseState *state);
 void *html_free_element(HtmlElement *element);
 
-// attribs
-HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, const char* value, size_t length);
-
 // printing
 void *html_print_dom(HtmlDocument *document);
 void *html_print_dom_element(HtmlElement *element, int level);
