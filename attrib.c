@@ -3,7 +3,7 @@
 #include "attrib.h"
 
 /*keep sorted, binary search*/
-const char const *html_attrib[HTML_ATTRIB_KEYS] = {
+const char *html_attrib[HTML_ATTRIB_KEYS] = {
 	[HTML_ATTRIB_NONE] = "",
 	
 	[HTML_ATTRIB_UNKNOWN] = "",

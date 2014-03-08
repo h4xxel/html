@@ -3,7 +3,7 @@
 #include "tag.h"
 
 /*keep sorted, binary search*/
-const char const *html_tag[HTML_TAGS] = {
+const char *html_tag[HTML_TAGS] = {
 	[HTML_TAG_NONE] = "",
 	
 	[HTML_TAG_UNKNOWN] = "",

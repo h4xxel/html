@@ -122,4 +122,6 @@ enum HtmlTag {
 	HTML_TAGS,
 };
 
+extern const char *html_tag[HTML_TAGS];
+
 #endif

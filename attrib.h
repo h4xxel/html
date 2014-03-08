@@ -139,7 +139,7 @@ struct HtmlAttrib {
 	HtmlAttrib *next;
 };
 
-extern const char const *html_attrib[HTML_ATTRIB_KEYS];
+extern const char *html_attrib[HTML_ATTRIB_KEYS];
 
 HtmlAttrib *attrib_append(HtmlAttrib **attrib, HtmlAttrib *item);
 
