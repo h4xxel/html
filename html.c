@@ -158,7 +158,7 @@ HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, char *key_name, cons
 	return attrib;
 }
 
-HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *child, HtmlElement *sibbling, char *text) {
+HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *child, HtmlElement *sibling, char *text) {
 	HtmlElement *elem;
 	if(!(elem = malloc(sizeof(HtmlElement))))
 		return NULL;
@@ -167,7 +167,7 @@ HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *chil
 	elem->tag = tag;
 	elem->attrib = attrib;
 	elem->child = child;
-	elem->sibbling = sibbling;
+	elem->sibling = sibling;
 	
 	return elem;
 }
@@ -241,7 +241,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 								if(!(elem_tmp = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, text)))
 									goto error;
 								if(state->elem) {
-									state->elem->sibbling = elem_tmp;
+									state->elem->sibling = elem_tmp;
 									state->elem = elem_tmp;
 								} else {
 									state->elem = stack_peek(&state->stack);
@@ -479,7 +479,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						if(!(elem_tmp = html_new_element(state->tag, state->attrib, NULL, NULL, NULL)))
 							goto error;
 						if(state->elem) {
-							state->elem->sibbling = elem_tmp;
+							state->elem->sibling = elem_tmp;
 							state->elem = elem_tmp;
 						} else {
 							state->elem = stack_peek(&state->stack);
@@ -513,7 +513,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						if(!(elem_tmp = html_new_element(state->tag, state->attrib, NULL, NULL, NULL)))
 							goto error;
 						if(state->elem) {
-							state->elem->sibbling = elem_tmp;
+							state->elem->sibling = elem_tmp;
 							state->elem = elem_tmp;
 						} else {
 							state->elem = stack_peek(&state->stack);
@@ -637,13 +637,13 @@ HtmlDocument *html_parse_end(HtmlParseState *state) {
 
 void *html_print_dom_element(HtmlElement *element, int level) {
 	int i;
-	HtmlElement *sibbling;
+	HtmlElement *sibling;
 	HtmlAttrib *attrib;
 
 	if(!element)
 		return NULL;
 	while(element) {
-		sibbling = element->sibbling;
+		sibling = element->sibling;
 		for(i = 0; i < level; i++)
 			printf("\t");
 		if(element->text) {
@@ -669,7 +669,7 @@ void *html_print_dom_element(HtmlElement *element, int level) {
 			printf("\n");
 		}
 		html_print_dom_element(element->child, level + 1);
-		element = sibbling;
+		element = sibling;
 	}
 	return NULL;
 }
@@ -693,14 +693,14 @@ void *html_free_element(HtmlElement *element) {
 	if(!element)
 		return NULL;
 	while(element) {
-		HtmlElement *sibbling = element->sibbling;
+		HtmlElement *sibling = element->sibling;
 		html_free_attrib(element->attrib);
 		if(element->text) {
 			free(element->text);
 		}
 		html_free_element(element->child);
 		free(element);
-		element = sibbling;
+		element = sibling;
 	}
 	return NULL;
 }

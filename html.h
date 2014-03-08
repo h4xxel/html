@@ -15,7 +15,7 @@ struct HtmlElement {
 	char *text;
 	HtmlAttrib *attrib;
 	HtmlElement *child;
-	HtmlElement *sibbling;
+	HtmlElement *sibling;
 };
 
 typedef struct HtmlDocument HtmlDocument;
