@@ -41,6 +41,7 @@ struct HtmlParseState {
 	Stack *stack;
 	HtmlElement *elem;
 	HtmlTag tag;
+	char *tag_name;
 	
 	HtmlAttrib *attrib;
 	HtmlAttribKey attrib_key;
@@ -158,13 +159,14 @@ HtmlAttrib *html_new_element_attrib(enum HtmlAttribKey key, char *key_name, cons
 	return attrib;
 }
 
-HtmlElement *html_new_element(HtmlTag tag, HtmlAttrib *attrib, HtmlElement *child, HtmlElement *sibling, char *text) {
+HtmlElement *html_new_element(HtmlTag tag, char *tag_name, HtmlAttrib *attrib, HtmlElement *child, HtmlElement *sibling, char *text) {
 	HtmlElement *elem;
 	if(!(elem = malloc(sizeof(HtmlElement))))
 		return NULL;
 	
 	elem->text = text;
 	elem->tag = tag;
+	elem->tag_name = tag_name;
 	elem->attrib = attrib;
 	elem->child = child;
 	elem->sibling = sibling;
@@ -188,7 +190,7 @@ HtmlParseState *html_parse_begin() {
 	
 	if(!(state->document = malloc(sizeof(HtmlDocument))))
 		goto error;
-	if(!(state->elem = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, NULL)))
+	if(!(state->elem = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, NULL, NULL)))
 		goto error;
 	if(!stack_push(&state->stack, state->elem))
 		goto error;
@@ -210,7 +212,6 @@ HtmlParseState *html_parse_begin() {
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
-	//TODO: handle unknown html elements
 	
 	#define ADVANCE_TOKEN token = stream; \
 		state->stringlen = 0; \
@@ -238,7 +239,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 							if(state->stringlen > 1 || !isspace(*token)) {
 								text = stringduplicate_length(token, state->stringlen);
 								
-								if(!(elem_tmp = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, text)))
+								if(!(elem_tmp = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, NULL, text)))
 									goto error;
 								if(state->elem) {
 									state->elem->sibling = elem_tmp;
@@ -344,16 +345,19 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 				switch(c) {
 					CASE_SPACE:
 						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->tag_name = stringduplicate_length(token, (stream - 1) - token);
 						state->state = STATE_ATTRIB;
 						ADVANCE_TOKEN;
 						continue;
 					case '>':
 						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->tag_name = stringduplicate_length(token, (stream - 1) - token);
 						state->state = STATE_CLOSE;
 						ADVANCE_TOKEN;
 						goto reswitch;
 					case '/':
 						state->tag = html_lookup_length_tag(token, (stream - 1) - token);
+						state->tag_name = stringduplicate_length(token, (stream - 1) - token);
 						state->state = STATE_SELFCLOSE;
 						ADVANCE_TOKEN;
 						continue;
@@ -476,7 +480,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 							continue;
 						}
 						//add to stack
-						if(!(elem_tmp = html_new_element(state->tag, state->attrib, NULL, NULL, NULL)))
+						if(!(elem_tmp = html_new_element(state->tag, state->tag_name, state->attrib, NULL, NULL, NULL)))
 							goto error;
 						if(state->elem) {
 							state->elem->sibling = elem_tmp;
@@ -492,6 +496,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 							state->elem = NULL;
 						}
 						state->tag = 0;
+						state->tag_name = 0;
 						state->attrib = 0;
 						state->attrib_key_name = 0;
 						
@@ -510,7 +515,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 							continue;
 						}
 						//add to stack
-						if(!(elem_tmp = html_new_element(state->tag, state->attrib, NULL, NULL, NULL)))
+						if(!(elem_tmp = html_new_element(state->tag, state->tag_name, state->attrib, NULL, NULL, NULL)))
 							goto error;
 						if(state->elem) {
 							state->elem->sibling = elem_tmp;
@@ -684,6 +689,7 @@ void *html_free_attrib(HtmlAttrib *attrib) {
 		return NULL;
 	html_free_attrib(attrib->next);
 	attrib->key = HTML_ATTRIB_NONE;
+	free(attrib->key_name);
 	free(attrib->value);
 	free(attrib->next);
 	return NULL;
@@ -693,14 +699,16 @@ void *html_free_element(HtmlElement *element) {
 	if(!element)
 		return NULL;
 	while(element) {
-		HtmlElement *sibling = element->sibling;
 		html_free_attrib(element->attrib);
+		if(element->tag_name) {
+			free(element->tag_name);
+		}
 		if(element->text) {
 			free(element->text);
 		}
 		html_free_element(element->child);
 		free(element);
-		element = sibling;
+		element = element->sibling;
 	}
 	return NULL;
 }

@@ -12,6 +12,8 @@
 typedef struct HtmlElement HtmlElement;
 struct HtmlElement {
 	HtmlTag tag;
+	char *tag_name;
+	
 	char *text;
 	HtmlAttrib *attrib;
 	HtmlElement *child;
