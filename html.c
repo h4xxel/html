@@ -294,8 +294,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						state->state = STATE_DECLARATION;
 						continue;
 					case '?':
-						ADVANCE_TOKEN;
-						state->state = STATE_END_CLOSE;
+						state->state = STATE_BEGIN;
 						continue;
 					
 					case '/':
@@ -373,6 +372,8 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 						state->state = STATE_SELFCLOSE;
 						ADVANCE_TOKEN;
 						continue;
+					case '?':
+						ADVANCE_TOKEN;
 					case '>':
 						state->state = STATE_CLOSE;
 						ADVANCE_TOKEN;
