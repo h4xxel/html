@@ -1,3 +1,9 @@
+/*
+ * html - a simple html parser lacking a better name 
+ * The contents of this file is licensed under the MIT License,
+ * see the file COPYING or http://opensource.org/licenses/MIT
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -56,7 +62,7 @@ const char *stringtrim_l(const char *string) {
 	if(!string)
 		return NULL;
 	while(*string && isspace(*string))
-		string ++;
+		string++;
 	
 	return string;
 }

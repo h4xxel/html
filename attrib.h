@@ -1,3 +1,9 @@
+/*
+ * html - a simple html parser lacking a better name 
+ * The contents of this file is licensed under the MIT License,
+ * see the file COPYING or http://opensource.org/licenses/MIT
+ */
+
 #ifndef __ATTRIB_H_
 #define __ATTRIB_H_
 

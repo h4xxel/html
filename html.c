@@ -1,8 +1,15 @@
+/*
+ * html - a simple html parser lacking a better name 
+ * The contents of this file is licensed under the MIT License,
+ * see the file COPYING or http://opensource.org/licenses/MIT
+ */
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+/* Explicitly expose internal structures */
 #define HTML_PARSE_STATE_TYPE struct HtmlParseState
 
 #include "stack.h"
@@ -49,7 +56,7 @@ struct HtmlParseState {
 	
 	enum State state;
 	
-	/*used for stripping out spaces*/
+	/* Used for stripping out spaces */
 	size_t stringlen;
 	char space;
 };
@@ -212,6 +219,7 @@ HtmlParseState *html_parse_begin() {
 const char *html_parse_stream(HtmlParseState *state, const char *stream, const char *token, size_t len) {
 	//TODO: support entities
 	//TODO: support more xml bullcrap, like CDATA
+	//TODO: clean up. remove code duplication (at least macrofy)
 	
 	#define ADVANCE_TOKEN token = stream; \
 		state->stringlen = 0; \
@@ -234,7 +242,7 @@ const char *html_parse_stream(HtmlParseState *state, const char *stream, const c
 			case STATE_CHILD:
 				switch(c) {
 					case '<':
-						//add containing text
+						/* Add containing text */
 						if(state->stringlen) {
 							if(state->stringlen > 1 || !isspace(*token)) {
 								text = stringduplicate_length(token, state->stringlen);

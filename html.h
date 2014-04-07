@@ -1,3 +1,9 @@
+/*
+ * html - a simple html parser lacking a better name 
+ * The contents of this file is licensed under the MIT License,
+ * see the file COPYING or http://opensource.org/licenses/MIT
+ */
+
 #ifndef __HTML_H_
 #define __HTML_H_
 
@@ -6,6 +12,7 @@
 #include "tag.h"
 
 #ifndef HTML_PARSE_STATE_TYPE
+/* Do not expose internals to calling application */
 #define HTML_PARSE_STATE_TYPE void
 #endif
 
