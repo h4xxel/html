@@ -1,8 +1,17 @@
 CFLAGS	+= -Wall --std=c99 -g
+LDFLAGS	+=
+
+BIN	= html
+SRC	= $(wildcard *.c)
+OBJ	= $(SRC:.c=.o)
 
 .PHONY: all clean install
-all:
-	$(CC) $(CFLAGS) -o html *.c $(LDFLAGS)
+
+all: $(OBJ)
+	$(CC) $(CFLAGS) -o $(BIN) $(OBJ) $(LDFLAGS)
 
 clean:
-	rm -f html
+	rm -f $(BIN) $(OBJ)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
