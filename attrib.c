@@ -149,8 +149,9 @@ HtmlAttrib *attrib_append(HtmlAttrib **attrib, HtmlAttrib *item) {
 	HtmlAttrib *attrib_last;
 	
 	if (!*attrib) {
-		*attrib = malloc(sizeof(HtmlAttrib));
-		memcpy(*attrib, item, sizeof(HtmlAttrib));
+//		*attrib = malloc(sizeof(HtmlAttrib));
+//		memcpy(*attrib, item, sizeof(HtmlAttrib));
+		*attrib = item;
 	} else {
 		attrib_last = attrib_get_last(*attrib);
 		attrib_last->next = item;

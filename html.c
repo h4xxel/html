@@ -195,6 +195,8 @@ HtmlParseState *html_parse_begin() {
 	state->stringlen = 0;
 	state->space = 0;
 	
+	state->attrib = NULL;
+	
 	if(!(state->document = malloc(sizeof(HtmlDocument))))
 		goto error;
 	if(!(state->elem = html_new_element(HTML_TAG_NONE, NULL, NULL, NULL, NULL, NULL)))
@@ -705,10 +707,13 @@ void *html_free_attrib(HtmlAttrib *attrib) {
 }
 
 void *html_free_element(HtmlElement *element) {
+	void *sibling;
+	
 	if(!element)
 		return NULL;
 	while(element) {
 		html_free_attrib(element->attrib);
+		free(element->attrib);
 		if(element->tag_name) {
 			free(element->tag_name);
 		}
@@ -716,8 +721,9 @@ void *html_free_element(HtmlElement *element) {
 			free(element->text);
 		}
 		html_free_element(element->child);
+		sibling = element->sibling;
 		free(element);
-		element = element->sibling;
+		element = sibling;
 	}
 	return NULL;
 }
